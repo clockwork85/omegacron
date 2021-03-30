@@ -1,4 +1,4 @@
-"""Top-level package for omegacron."""
+"""Top-level package for meshiah."""
 
 __author__ = """Matthew D. Bray"""
 __email__ = 'matthew.d.bray1985@gmail.com'

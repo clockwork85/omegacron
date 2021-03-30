@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-"""Tests for `omegacron` package."""
+"""Tests for `meshiah` package."""
 
 import pytest
 
 
-from omegacron import omegacron
+from meshiah import meshiah
 
 
 @pytest.fixture

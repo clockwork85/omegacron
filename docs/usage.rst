@@ -2,6 +2,6 @@
 Usage
 =====
 
-To use omegacron in a project::
+To use meshiah in a project::
 
-    import omegacron
+    import meshiah

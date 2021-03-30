@@ -1,1 +1,1 @@
-"""Unit test package for omegacron."""
+"""Unit test package for meshiah."""

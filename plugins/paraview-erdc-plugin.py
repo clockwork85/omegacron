@@ -11,14 +11,14 @@ from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkCommonDataModel import vtkUnstructuredGrid
 # import sys
 import meshio
-import omegacron
+import meshiah
 
-paraview_plugin_version = omegacron.__version__
+paraview_plugin_version = meshiah.__version__
 vtk_to_meshio_type = meshio.vtk._vtk.vtk_to_meshio_type
 meshio_to_vtk_type = meshio.vtk._vtk.meshio_to_vtk_type
 # list(meshio._helpers.reader_map.keys())
-erdc_input_filetypes = list(omegacron._helpers.reader_map.keys())
-erdc_extensions = [ext[1:] for ext in omegacron.extension_to_filetype.keys()]
+erdc_input_filetypes = list(meshiah._helpers.reader_map.keys())
+erdc_extensions = [ext[1:] for ext in meshiah.extension_to_filetype.keys()]
 erdc_input_filetypes = ["automatic"] + erdc_input_filetypes
 
 
@@ -74,7 +74,7 @@ class ERDCReader(VTKPythonAlgorithmBase):
         output = dsa.WrapDataObject(vtkUnstructuredGrid.GetData(outInfoVec))
 
         # Use meshio to read the mesh
-        mesh = omegacron.read(self._filename, self._file_format)
+        mesh = meshiah.read(self._filename, self._file_format)
         points, cells = mesh.points, mesh.cells
 
         # Points
@@ -182,11 +182,11 @@ class ERDCWriter(VTKPythonAlgorithmBase):
         for name, array in cell_data_flattened.items():
             cell_data[name] = []
             for cell_type in cells_dict:
-                vtk_cell_type = erdc_to_vtk_type[cell_type]
+                vtk_cell_type = meshio_to_vtk_type[cell_type]
                 mask_cell_type = cell_types == vtk_cell_type
                 cell_data[name].append(array[mask_cell_type])
 
-        # Use omegacron to write mesh
+        # Use meshiah to write mesh
         meshio.write_point_cells(
             self._filename,
             points,

@@ -8,13 +8,13 @@ Installation
 Stable release
 --------------
 
-To install omegacron, run this command in your terminal:
+To install meshiah, run this command in your terminal:
 
 .. code-block:: console
 
-    $ pip install omegacron
+    $ pip install meshiah
 
-This is the preferred method to install omegacron, as it will always install the most recent stable release.
+This is the preferred method to install meshiah, as it will always install the most recent stable release.
 
 If you don't have `pip`_ installed, this `Python installation guide`_ can guide
 you through the process.
@@ -26,19 +26,19 @@ you through the process.
 From sources
 ------------
 
-The sources for omegacron can be downloaded from the `Github repo`_.
+The sources for meshiah can be downloaded from the `Github repo`_.
 
 You can either clone the public repository:
 
 .. code-block:: console
 
-    $ git clone git://github.com/clockwork85/omegacron
+    $ git clone git://github.com/clockwork85/meshiah
 
 Or download the `tarball`_:
 
 .. code-block:: console
 
-    $ curl -OJL https://github.com/clockwork85/omegacron/tarball/master
+    $ curl -OJL https://github.com/clockwork85/meshiah/tarball/master
 
 Once you have a copy of the source, you can install it with:
 
@@ -47,5 +47,5 @@ Once you have a copy of the source, you can install it with:
     $ python setup.py install
 
 
-.. _Github repo: https://github.com/clockwork85/omegacron
-.. _tarball: https://github.com/clockwork85/omegacron/tarball/master
+.. _Github repo: https://github.com/clockwork85/meshiah
+.. _tarball: https://github.com/clockwork85/meshiah/tarball/master

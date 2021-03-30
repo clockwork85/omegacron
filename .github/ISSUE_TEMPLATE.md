@@ -1,4 +1,4 @@
-* omegacron version:
+* meshiah version:
 * Python version:
 * Operating System:
 

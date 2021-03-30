@@ -1,4 +1,4 @@
-Welcome to omegacron's documentation!
+Welcome to meshiah's documentation!
 ======================================
 
 .. toctree::

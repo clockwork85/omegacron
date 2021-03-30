@@ -7,6 +7,6 @@ except ImportError:
         __version__ = "unknown"
 
 try:
-    __version__ = metadata.version("omegacron")
+    __version__ = metadata.version("meshiah")
 except Exception:
     __version__ = "unknown"

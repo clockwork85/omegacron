@@ -25,5 +25,5 @@ deploy:
     secure: PLEASE_REPLACE_ME
   on:
     tags: true
-    repo: clockwork85/omegacron
+    repo: clockwork85/meshiah
     python: 3.8
