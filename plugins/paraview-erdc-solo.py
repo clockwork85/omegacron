@@ -11,18 +11,29 @@ from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkCommonDataModel import vtkUnstructuredGrid
 import collections
 # import sys
-#import meshio
-#import meshiah
+# import meshio
+# import meshiah
 
-#paraview_plugin_version = meshiah.__version__
-#vtk_to_meshio_type = meshio.vtk._vtk.vtk_to_meshio_type
-#meshio_to_vtk_type = meshio.vtk._vtk.meshio_to_vtk_type
+# paraview_plugin_version = meshiah.__version__
+# vtk_to_meshio_type = meshio.vtk._vtk.vtk_to_meshio_type
+# meshio_to_vtk_type = meshio.vtk._vtk.meshio_to_vtk_type
 # list(meshio._helpers.reader_map.keys())
-#erdc_input_filetypes = list(meshiah._helpers.reader_map.keys())
+# erdc_input_filetypes = list(meshiah._helpers.reader_map.keys())
 erdc_input_filetypes = ['erdc']
-#erdc_extensions = [ext[1:] for ext in meshiah.extension_to_filetype.keys()]
-erdc_extensions = ['.2dm', '3dm']
+# erdc_extensions = [ext[1:] for ext in meshiah.extension_to_filetype.keys()]
+erdc_extensions = ['2dm', '3dm']
 erdc_input_filetypes = ["automatic"] + erdc_input_filetypes
+
+print(f"Erdc input filetypes : {erdc_input_filetypes}")
+
+
+def vtk_type_from_erdc(erdc_type):
+    if erdc_type == "triangle":
+        return 5
+    elif erdc_type == "tetrahedron":
+        return 10
+    else:
+        return -1
 
 
 @smproxy.reader(
@@ -77,14 +88,16 @@ class ERDCReader(VTKPythonAlgorithmBase):
         output = dsa.WrapDataObject(vtkUnstructuredGrid.GetData(outInfoVec))
 
         # Use meshio to read the mesh
-        #mesh = meshiah.read(self._filename, self._file_format)
-        for open(self._filename) as ifile: 
-            for  line in ifile.readlines():
-                points = []
-                facets = []
-                mats = []
+        # mesh = meshiah.read(self._filename, self._file_format)
+        print(f"Opening mesh: {self._filename}")
+        with open(self._filename) as ifile:
+            points = []
+            facets = []
+            cells = []
+            mats = []
+            for line in ifile.readlines():
                 strip = line.strip()
-                split = strip.split() 
+                split = strip.split()
 
                 if split[0] == "ND":
                     # Vertex
@@ -102,34 +115,38 @@ class ERDCReader(VTKPythonAlgorithmBase):
                 else:
                     continue
 
-        points = np.array(points)
-        cells = np.array(facets)
-        mats = np.array(mats, dtype=np.int32)
-        if facets.shape[1] == 3:
-            cells.append(CellBlock("TRIANGLE", facets-1))
-        elif facets.shape[1] == 4:
-            cells.append(CellBlock("TETRA", facets-1))
+        points_np = np.array(points)
+        cells_np = np.array(facets)
+        mats_np = np.array(mats, dtype=np.int32)
+
+        if cells_np.shape[1] == 3:
+            cells.append(["triangle", cells_np-1])
+        elif cells_np.shape[1] == 4:
+            cells.append(["tetrahedron", cells_np-1])
         else:
             logging.warning(
                 "ERDC writer only support triangles and tetrahedrons at this time"
-                "Skipping {} polygons with {} nodes".format(facets.shape[0],
-                                                            facets.shape[1])
+                "Skipping {} polygons with {} nodes".format(cells_np.shape[0],
+                                                            cells_np.shape[1])
             )
         cell_data = {}
         cell_data['Region'] = []
-        cell_data['Region'].append(mats)
+        cell_data['Region'].append(mats_np)
 
         # Points
-        if points.shape[1] == 2:
-            points = np.hstack([points, np.zeros((len(points), 1))])
-        output.SetPoints(points)
+        # if points.shape[1] == 2:
+        #    points = np.hstack([points, np.zeros((len(points), 1))])
+        output.SetPoints(points_np)
 
         # CellBlock, adapted from test/legacy_writer.py
         cell_types = np.array([], dtype=np.ubyte)
         cell_offsets = np.array([], dtype=int)
         cell_conn = np.array([], dtype=int)
+        # triangle - vtk type = 5
+        # tetrahedron - vtk type = 10
+
         for erdc_type, data in cells:
-            vtk_type = meshio_to_vtk_type[erdc_type]
+            vtk_type = vtk_type_from_erdc(erdc_type)
             ncells, npoints = data.shape
             cell_types = np.hstack(
                 [cell_types, np.full(ncells, vtk_type, dtype=np.ubyte)]
@@ -141,33 +158,36 @@ class ERDCReader(VTKPythonAlgorithmBase):
                 [npoints * np.ones((ncells, 1), dtype=int), data]
             ).flatten()
             cell_conn = np.hstack([cell_conn, conn])
+        print(f"cell_types: \n {cell_types}")
+        print(f"cell_offsets: \n {cell_offsets}")
+        print(f"cell_conn: \n {cell_conn}")
         output.SetCells(cell_types, cell_offsets, cell_conn)
 
         # Point data
-        for name, array in mesh.point_data.items():
-            output.PointData.append(array, name)
+#        for name, array in mesh.point_data.items():
+#            output.PointData.append(array, name)
 
         # Cell data
-        for name, data in mesh.cell_data.items():
+        for name, data in cell_data.items():
             array = np.concatenate(data)
             output.CellData.append(array, name)
 
         # Field data
-        for name, array in mesh.field_data.items():
-            output.FieldData.append(array, name)
+#        for name, array in mesh.field_data.items():
+#            output.FieldData.append(array, name)
 
         return 1
 
 
-@smproxy.writer(
+@ smproxy.writer(
     name="erdc Writer",
     extensions=erdc_extensions,
     file_description="erdc supported files",
     support_reload=False,
 )
-@smproperty.input(name="Input", port_index=0)
-@smdomain.datatype(dataTypes=["vtkUnstructuredGrid"],
-                   composite_data_supported=False)
+@ smproperty.input(name="Input", port_index=0)
+@ smdomain.datatype(dataTypes=["vtkUnstructuredGrid"],
+                    composite_data_supported=False)
 class ERDCWriter(VTKPythonAlgorithmBase):
     def __init__(self):
         VTKPythonAlgorithmBase.__init__(
@@ -176,8 +196,8 @@ class ERDCWriter(VTKPythonAlgorithmBase):
         )
         self._filename = None
 
-    @smproperty.stringvector(name="FileName", panel_visibility="never")
-    @smdomain.filelist()
+    @ smproperty.stringvector(name="FileName", panel_visibility="never")
+    @ smdomain.filelist()
     def SetFileName(self, filename):
         if self._filename != filename:
             self._filename = filename
@@ -242,3 +262,17 @@ class ERDCWriter(VTKPythonAlgorithmBase):
     def Write(self):
         self.Modified()
         self.Update()
+
+
+def test_ERDCReader(fname):
+    reader = ERDCReader()
+    reader.SetFileName(fname)
+    reader.Update()
+    assert reader.GetOutputDataObject(0).GetNumberOfCells() > 0
+
+
+if __name__ == '__main__':
+    test_ERDCReader('tmp/Scenario1.2dm')
+    print(f"Test passed for reading 2dm")
+    test_ERDCReader('tmp/Scenario1.3dm')
+    print(f"Test passed for reading 3dm")
