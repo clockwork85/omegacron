@@ -9,24 +9,57 @@ from paraview.util.vtkAlgorithm import (
 from vtkmodules.numpy_interface import dataset_adapter as dsa
 from vtkmodules.vtkCommonDataModel import vtkUnstructuredGrid
 import sys
-print(sys.path)
-import meshio
+import meshiah
+try:
+    import meshio
+    meshioLib = True
+except ImportError:
+    meshioLib = False
 
-paraview_plugin_version = meshio.__version__
-vtk_to_meshio_type = meshio.vtk._vtk.vtk_to_meshio_type
-meshio_to_vtk_type = meshio.vtk._vtk.meshio_to_vtk_type
-meshio_input_filetypes = list(meshio._helpers.reader_map.keys())
-meshio_extensions = [ext[1:] for ext in meshio.extension_to_filetype.keys()]
-meshio_input_filetypes = ["automatic"] + meshio_input_filetypes
+paraview_plugin_version = meshiah.__version__
+erdc_exclusive_input_filetypes = ["dm"]
+erdc_exclusive_extensions = ["2dm", "3dm"]
+
+if meshioLib:
+    #paraview_plugin_version = meshio.__version__
+    vtk_to_meshio_type = meshio.vtk._vtk.vtk_to_meshio_type
+    erdc_to_vtk_type = meshio.vtk._vtk.meshio_to_vtk_type
+    meshio_input_filetypes = list(meshio._helpers.reader_map.keys())
+    meshio_extensions = [ext[1:]
+                         for ext in meshio.extension_to_filetype.keys()]
+    erdc_extensions = erdc_exclusive_extensions + meshio_extensions
+    erdc_input_filetypes = ["automatic"] + \
+        meshio_input_filetypes + erdc_exclusive_input_filetypes
+    reader_name = 'ERDC-meshio reader'
+    description = 'ERDC-meshio supported files'
+else:
+    vtk_to_erdc_type = {5: "triangle", 10: "tetrahedra"}
+    erdc_to_vtk_type = {"triangle": 5, "tetrahedra": 10}
+    erdc_input_filetypes = ["automatic"] + erdc_exclusive_input_filetypes
+    erdc_extensions = erdc_exclusive_extensions
+    reader_name = 'ERDC reader'
+    description = 'ERDC supported files'
+
+print(f"ERDC extensions:\n {erdc_extensions}")
+print(f"ERDC input filetypes:\n {erdc_input_filetypes}")
+
+
+def get_erdc_extensions(fname):
+    filename = fname.split('.')
+    ext = filename[-1]
+    if ext in erdc_extensions:
+        return ext
+    else:
+        return None
 
 
 @smproxy.reader(
-    name="meshio reader",
-    extensions=meshio_extensions,
-    file_description="meshio-supported files",
+    name=reader_name,
+    extensions=erdc_extensions,
+    file_description=description,
     support_reload=False,
 )
-class MeshioReader(VTKPythonAlgorithmBase):
+class ERDCReader(VTKPythonAlgorithmBase):
     def __init__(self):
         VTKPythonAlgorithmBase.__init__(
             self, nInputPorts=0, nOutputPorts=1, outputType="vtkUnstructuredGrid"
@@ -37,7 +70,7 @@ class MeshioReader(VTKPythonAlgorithmBase):
     @smproperty.stringvector(name="FileName")
     @smdomain.filelist()
     @smhint.filechooser(
-        extensions=meshio_extensions, file_description="meshio-supported files"
+        extensions=erdc_extensions, file_description=description
     )
     def SetFileName(self, filename):
         if self._filename != filename:
@@ -46,7 +79,7 @@ class MeshioReader(VTKPythonAlgorithmBase):
 
     @smproperty.stringvector(name="StringInfo", information_only="1")
     def GetStrings(self):
-        return meshio_input_filetypes
+        return erdc_input_filetypes
 
     @smproperty.stringvector(name="FileFormat", number_of_elements="1")
     @smdomain.xml(
@@ -70,9 +103,15 @@ class MeshioReader(VTKPythonAlgorithmBase):
     def RequestData(self, request, inInfoVec, outInfoVec):
         output = dsa.WrapDataObject(vtkUnstructuredGrid.GetData(outInfoVec))
 
-        # Use meshio to read the mesh
-        mesh = meshio.read(self._filename, self._file_format)
-        points, cells = mesh.points, mesh.cells
+        # Determine how to read the mesh
+        self._file_format = get_erdc_extensions(self._filename)
+        if(self._file_format):
+            mesh = meshiah.read_for_paraview(self._filename)
+        elif(meshioLib and not self._file_format):
+            mesh = meshio.read(self._filename, self._file_format)
+            points, cells = mesh.points, mesh.cells
+        else:
+            print(f"Unable to deduce file format from file: {self._filename}")
 
         # Points
         if points.shape[1] == 2:
@@ -89,7 +128,8 @@ class MeshioReader(VTKPythonAlgorithmBase):
             cell_types = np.hstack(
                 [cell_types, np.full(ncells, vtk_type, dtype=np.ubyte)]
             )
-            offsets = len(cell_conn) + (1 + npoints) * np.arange(ncells, dtype=int)
+            offsets = len(cell_conn) + (1 + npoints) * \
+                np.arange(ncells, dtype=int)
             cell_offsets = np.hstack([cell_offsets, offsets])
             conn = np.hstack(
                 [npoints * np.ones((ncells, 1), dtype=int), data]
@@ -194,3 +234,14 @@ class MeshioWriter(VTKPythonAlgorithmBase):
     def Write(self):
         self.Modified()
         self.Update()
+
+
+def test_ERDCReader_Exc(fname):
+    reader = ERDCReader()
+    reader.SetFileName(fname)
+    reader.Update()
+    assert reader.GetOutputDataObject(0).GetNumberOfCells() > 0
+
+
+if __name__ == '__main__':
+    test_ERDCReader_Exc('tmp/Scenario1.2dm')
