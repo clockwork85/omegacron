@@ -4,7 +4,7 @@ __author__ = """Matthew D. Bray"""
 __email__ = 'matthew.d.bray1985@gmail.com'
 __version__ = '0.1.0'
 
-from meshiah.fileio import read, write
+from meshiah.fileio import *
 
 __all__ = [
     "__version__"

@@ -125,5 +125,38 @@ def read_3dm(filename):
     return meshio.Mesh(points, cells, cell_data=cell_data)
 
 
+def read_data_from_file(filename):
+    """ Read mesh data from a file 
+    Using this function to arrange methods to call the right data
+
+    """
+    # The data types that are currently supported
+
+    data_extension_types = ["fsd"]
+    ext = get_ext(filename)
+
+    if ext not in data_extension_types:
+        print(f"Data type {ext} not supported by Meshiah")
+        sys.exit()
+
+    if ext == "fsd":
+        return read_fsd_file(filename)
+
+
+def read_fsd_file(filename):
+    """ Reads in a fsd file into a numpy array """
+
+    with open(filename) as ifile:
+        fsd_data = []
+        for line in ifile.readlines():
+            # Check to see if it has any header information
+            if isinstance(line, str):
+                # Throw this away for now - but later will need node/facet/TS information
+                for i in range(6):
+                    ifile.readline()
+            fsd_data.append(float(line))
+    return np.array(fsd_data, dtype=np.float64)
+
+
 def write():
     return "Mesh Wrote"
