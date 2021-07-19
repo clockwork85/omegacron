@@ -106,7 +106,8 @@ class ERDCReader(VTKPythonAlgorithmBase):
         # Determine how to read the mesh
         self._file_format = get_erdc_extensions(self._filename)
         if(self._file_format):
-            mesh = meshiah.read_for_paraview(self._filename)
+            mesh = meshiah.read(self._filename)
+            points, cells = mesh.points, mesh.cells
         elif(meshioLib and not self._file_format):
             mesh = meshio.read(self._filename, self._file_format)
             points, cells = mesh.points, mesh.cells
