@@ -14,6 +14,7 @@ try:
     import meshio
     meshioLib = True
 except ImportError:
+    print(f"Meshio not found")
     meshioLib = False
 
 paraview_plugin_version = meshiah.__version__
@@ -21,7 +22,7 @@ erdc_exclusive_input_filetypes = ["dm"]
 erdc_exclusive_extensions = ["2dm", "3dm"]
 
 if meshioLib:
-    #paraview_plugin_version = meshio.__version__
+    # paraview_plugin_version = meshio.__version__
     vtk_to_meshio_type = meshio.vtk._vtk.vtk_to_meshio_type
     erdc_to_vtk_type = meshio.vtk._vtk.meshio_to_vtk_type
     meshio_input_filetypes = list(meshio._helpers.reader_map.keys())
@@ -106,7 +107,8 @@ class ERDCReader(VTKPythonAlgorithmBase):
         # Determine how to read the mesh
         self._file_format = get_erdc_extensions(self._filename)
         if(self._file_format):
-            mesh = meshiah.read_for_paraview(self._filename)
+            mesh = meshiah.read(self._filename)
+            points, cells = mesh.points, mesh.cells
         elif(meshioLib and not self._file_format):
             mesh = meshio.read(self._filename, self._file_format)
             points, cells = mesh.points, mesh.cells
@@ -123,7 +125,7 @@ class ERDCReader(VTKPythonAlgorithmBase):
         cell_offsets = np.array([], dtype=int)
         cell_conn = np.array([], dtype=int)
         for meshio_type, data in cells:
-            vtk_type = meshio_to_vtk_type[meshio_type]
+            vtk_type = meshio.vtk._vtk.meshio_to_vtk_type[meshio_type]
             ncells, npoints = data.shape
             cell_types = np.hstack(
                 [cell_types, np.full(ncells, vtk_type, dtype=np.ubyte)]
@@ -216,7 +218,7 @@ class MeshioWriter(VTKPythonAlgorithmBase):
         for name, array in cell_data_flattened.items():
             cell_data[name] = []
             for cell_type in cells_dict:
-                vtk_cell_type = meshio_to_vtk_type[cell_type]
+                vtk_cell_type = meshio.vtk._vtk.meshio_to_vtk_type[cell_type]
                 mask_cell_type = cell_types == vtk_cell_type
                 cell_data[name].append(array[mask_cell_type])
 
