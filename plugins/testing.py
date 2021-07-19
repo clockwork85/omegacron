@@ -9,20 +9,23 @@ and writers in ParaView"""
 # 'register' the algorithm with ParaView along with information about UI.
 from paraview.util.vtkAlgorithm import *
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # A source example.
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
+
 @smproxy.source(name="PythonSuperquadricSource",
-       label="Python-based Superquadric Source Example")
+                label="Python-based Superquadric Source Example")
 class PythonSuperquadricSource(VTKPythonAlgorithmBase):
     """This is dummy VTKPythonAlgorithmBase subclass that
     simply puts out a Superquadric poly data using a vtkSuperquadricSource
     internally"""
+
     def __init__(self):
         VTKPythonAlgorithmBase.__init__(self,
-                nInputPorts=0,
-                nOutputPorts=1,
-                outputType='vtkPolyData')
+                                        nInputPorts=0,
+                                        nOutputPorts=1,
+                                        outputType='vtkPolyData')
         from vtkmodules.vtkFiltersSources import vtkSuperquadricSource
         self._realAlgorithm = vtkSuperquadricSource()
 
@@ -44,14 +47,14 @@ class PythonSuperquadricSource(VTKPythonAlgorithmBase):
             <Documentation>Set center of the superquadric</Documentation>
         </DoubleVectorProperty>""")
     def SetCenter(self, x, y, z):
-        self._realAlgorithm.SetCenter(x,y,z)
+        self._realAlgorithm.SetCenter(x, y, z)
         self.Modified()
 
     # In most cases, one can simply use available decorators.
     @smproperty.doublevector(name="Scale", default_values=[1, 1, 1])
     @smdomain.doublerange()
     def SetScale(self, x, y, z):
-        self._realAlgorithm.SetScale(x,y,z)
+        self._realAlgorithm.SetScale(x, y, z)
         self.Modified()
 
     @smproperty.intvector(name="ThetaResolution", default_values=16)
@@ -81,7 +84,7 @@ class PythonSuperquadricSource(VTKPythonAlgorithmBase):
         return (0, 100)
 
     @smproperty.doublevector(name="Value", default_values=[0.0])
-    @smdomain.xml(\
+    @smdomain.xml(
         """<DoubleRangeDomain name="range" default_mode="mid">
                 <RequiredProperties>
                     <Property name="ValueRangeInfo" function="RangeInfo" />
@@ -98,7 +101,7 @@ class PythonSuperquadricSource(VTKPythonAlgorithmBase):
         return ["one", "two", "three"]
 
     @smproperty.stringvector(name="String", number_of_elements="1")
-    @smdomain.xml(\
+    @smdomain.xml(
         """<StringListDomain name="list">
                 <RequiredProperties>
                     <Property name="StringInfo" function="StringInfo"/>
@@ -109,15 +112,14 @@ class PythonSuperquadricSource(VTKPythonAlgorithmBase):
         print("Setting ", value)
 
 
-
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # A reader example.
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 def createModifiedCallback(anobject):
     import weakref
     weakref_obj = weakref.ref(anobject)
     anobject = None
+
     def _markmodified(*args, **kwars):
         o = weakref_obj()
         if o is not None:
@@ -128,25 +130,30 @@ def createModifiedCallback(anobject):
 #   @smproxy.source(name="PythonCSVReader", label="Python-based CSV Reader")
 #   @smhint.xml("""<ReaderFactory extensions="csv" file_description="Numpy CSV files" />""")
 # or directly use the "@reader" decorator.
+
+
 @smproxy.reader(name="PythonCSVReader", label="Python-based CSV Reader",
                 extensions="csv", file_description="CSV files")
 class PythonCSVReader(VTKPythonAlgorithmBase):
     """A reader that reads a CSV file. If the CSV has a "time" column, then
     the data is treated as a temporal dataset"""
+
     def __init__(self):
-        VTKPythonAlgorithmBase.__init__(self, nInputPorts=0, nOutputPorts=1, outputType='vtkTable')
+        VTKPythonAlgorithmBase.__init__(
+            self, nInputPorts=0, nOutputPorts=1, outputType='vtkTable')
         self._filename = None
         self._ndata = None
         self._timesteps = None
 
         from vtkmodules.vtkCommonCore import vtkDataArraySelection
         self._arrayselection = vtkDataArraySelection()
-        self._arrayselection.AddObserver("ModifiedEvent", createModifiedCallback(self))
+        self._arrayselection.AddObserver(
+            "ModifiedEvent", createModifiedCallback(self))
 
     def _get_raw_data(self, requested_time=None):
         if self._ndata is not None:
             if requested_time is not None:
-                return self._ndata[self._ndata["time"]==requested_time]
+                return self._ndata[self._ndata["time"] == requested_time]
             return self._ndata
 
         if self._filename is None:
@@ -154,7 +161,8 @@ class PythonCSVReader(VTKPythonAlgorithmBase):
             raise RuntimeError("No filename specified")
 
         import numpy
-        self._ndata = numpy.genfromtxt(self._filename, dtype=None, names=True, delimiter=',', autostrip=True)
+        self._ndata = numpy.genfromtxt(
+            self._filename, dtype=None, names=True, delimiter=',', autostrip=True)
         self._timesteps = None
         if "time" in self._ndata.dtype.names:
             self._timesteps = numpy.sort(numpy.unique(self._ndata["time"]))
@@ -243,15 +251,18 @@ class PythonCSVReader(VTKPythonAlgorithmBase):
             output.GetInformation().Set(output.DATA_TIME_STEP(), data_time)
         return 1
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # A writer example.
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
+
 @smproxy.writer(extensions="npz", file_description="NumPy Compressed Arrays", support_reload=False)
 @smproperty.input(name="Input", port_index=0)
 @smdomain.datatype(dataTypes=["vtkTable"], composite_data_supported=False)
 class NumpyWriter(VTKPythonAlgorithmBase):
     def __init__(self):
-        VTKPythonAlgorithmBase.__init__(self, nInputPorts=1, nOutputPorts=0, inputType='vtkTable')
+        VTKPythonAlgorithmBase.__init__(
+            self, nInputPorts=1, nOutputPorts=0, inputType='vtkTable')
         self._filename = None
 
     @smproperty.stringvector(name="FileName", panel_visibility="never")
@@ -279,9 +290,11 @@ class NumpyWriter(VTKPythonAlgorithmBase):
         self.Modified()
         self.Update()
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # A filter example.
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
+
 @smproxy.filter()
 @smproperty.input(name="InputTable", port_index=1)
 @smdomain.datatype(dataTypes=["vtkTable"], composite_data_supported=False)
@@ -289,7 +302,8 @@ class NumpyWriter(VTKPythonAlgorithmBase):
 @smdomain.datatype(dataTypes=["vtkDataSet"], composite_data_supported=False)
 class ExampleTwoInputFilter(VTKPythonAlgorithmBase):
     def __init__(self):
-        VTKPythonAlgorithmBase.__init__(self, nInputPorts=2, nOutputPorts=1, outputType="vtkPolyData")
+        VTKPythonAlgorithmBase.__init__(
+            self, nInputPorts=2, nOutputPorts=1, outputType="vtkPolyData")
 
     def FillInputPortInformation(self, port, info):
         if port == 0:
@@ -307,6 +321,7 @@ class ExampleTwoInputFilter(VTKPythonAlgorithmBase):
         print("Pretend work done!")
         return 1
 
+
 @smproxy.filter()
 @smproperty.input(name="Input")
 @smdomain.datatype(dataTypes=["vtkDataSet"], composite_data_supported=False)
@@ -315,6 +330,7 @@ class PreserveInputTypeFilter(VTKPythonAlgorithmBase):
     Example filter demonstrating how to write a filter that preserves the input
     dataset type.
     """
+
     def __init__(self):
         super().__init__(nInputPorts=1, nOutputPorts=1, outputType="vtkDataSet")
 
@@ -348,18 +364,20 @@ def test_PythonSuperquadricSource():
     src.Update()
     assert src.GetOutputDataObject(0).GetNumberOfPoints() > npts
 
+
 def test_PythonCSVReader(fname):
     reader = PythonCSVReader()
     reader.SetFileName(fname)
     reader.Update()
     assert reader.GetOutputDataObject(0).GetNumberOfRows() > 0
 
+
 if __name__ == "__main__":
     test_PythonSuperquadricSource()
-    #test_PythonCSVReader("/tmp/data.csv")
+    # test_PythonCSVReader("/tmp/data.csv")
 
     from paraview.detail.pythonalgorithm import get_plugin_xmls
     from xml.dom.minidom import parseString
     for xml in get_plugin_xmls(globals()):
         dom = parseString(xml)
-        print(dom.toprettyxml(" ","\n"))
+        print(dom.toprettyxml(" ", "\n"))
