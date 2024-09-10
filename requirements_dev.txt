@@ -9,5 +9,5 @@ Sphinx==1.8.5
 twine==1.14.0
 meshio==4.3.11
 
-pytest==4.6.5
+pytest==8.3.3
 pytest-runner==5.1
